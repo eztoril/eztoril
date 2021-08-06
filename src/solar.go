@@ -9,6 +9,8 @@ import (
 	"log"
 	"os"
 	"time"
+	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
@@ -116,6 +118,24 @@ func (d cumInvRTDataReqType) createHttpRequest() (string, *http.Response) {
 	return bodyString, resp
 }
 
+func (d cumInvRTDataReqType) writeDB() int {
+	fmt.Println("cumInvRTDataReqType:writeDB called")
+	// Create the database handle, confirm driver is present
+	db, err := sql.Open("mysql", "solar:solar@tcp(127.0.0.1:3306)/solardb")
+	defer db.Close()
+
+	if err != nil {
+		fmt.Println("sql.Open failure: ", err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		fmt.Println("db.Ping failure: ", err)
+	}
+	return 0
+}
+
+
 //################################################################
 
 func main() {
@@ -128,10 +148,34 @@ func main() {
 
 	invRTDataReq.body = invRTDataReq.parseData(bodyString)
 	fmt.Printf("%+v\n", invRTDataReq.body)
+	fmt.Println("Before writeDB...")
 
-	//fmt.Println(bodyString)
+	result := invRTDataReq.writeDB()
+
+	fmt.Println(result)
 
 	defer resp.Body.Close()
 }
 
-//################################################################
+// user: solar pw: solar ################################################################
+//
+// martin@htpc:~/repo/solar$ sudo mysql -u root -p
+//
+// MariaDB [(none)]> CREATE DATABASE solardb
+// MariaDB [(none)]> use solardb;
+// MariaDB [solardb]> SELECT user FROM mysql.user;
+// MariaDB [solardb]> CREATE USER 'solar'@'localhost' IDENTIFIED BY 'password';
+// MariaDB [solardb]> GRANT ALL PRIVILEGES ON * . * TO 'solar'@'localhost';
+
+// create table DemoTable
+// (
+//   StudentId int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+//   StudentName varchar(20),
+//   StudentAdmissionDate DATE
+// );
+// insert into Production(Day,Power) values(now(), 14);
+// insert into Production(Day,Power) values('2021-05-27', '105');
+
+// MariaDB [solardb]> CREATE TABLE Production ( Day DATE PRIMARY KEY, Power int );
+
+// select sum(Power) from Production where Production.Day Between '2021-04-27' and '2022-05-27';
