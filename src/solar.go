@@ -11,9 +11,11 @@ import (
 	"time"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jasonlvhit/gocron"
 )
 
 const (
+	fetchTime = "23:50"
 	invAddr = "http://192.168.1.34"
 	apiVersionURL = invAddr + "/solar_api/GetAPIVersion.cgi"
 	invRTData = invAddr + "/solar_api/v1/GetInverterRealtimeData.cgi"
@@ -82,14 +84,12 @@ type DataTypes interface {
 }
 
 func (d cumInvRTDataReqType) parseData(bodyString string) cumInvRTDataReqResp {
-	fmt.Println("cumInvRTDataReqType:parseData called")
 	var body cumInvRTDataReqResp
 	json.Unmarshal([]byte(bodyString), &body)
 	return body
 }
 
 func (d cumInvRTDataReqType) createHttpRequest() (string, *http.Response) {
-	fmt.Println("cumInvRTDataReqType:createHttpRequest called")
 	req, err := http.NewRequest("GET", d.url, nil)
     if err != nil {
         log.Print(err)
@@ -112,25 +112,36 @@ func (d cumInvRTDataReqType) createHttpRequest() (string, *http.Response) {
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	bodyString := string(bodyBytes)
 	
-    fmt.Println("Response status:", resp.Status)
-
-	fmt.Println("cumInvRTDataReqType:createHttpRequest End")
+    //fmt.Println("Fronius HTTP GET Response status:", resp.Status)
 	return bodyString, resp
 }
 
-func (d cumInvRTDataReqType) writeDB() int {
-	fmt.Println("cumInvRTDataReqType:writeDB called")
+func (d cumInvRTDataReqType) writeDB(body cumInvRTDataReqResp) int {
 	// Create the database handle, confirm driver is present
 	db, err := sql.Open("mysql", "solar:solar@tcp(127.0.0.1:3306)/solardb")
 	defer db.Close()
 
 	if err != nil {
 		fmt.Println("sql.Open failure: ", err)
+		return -1
 	}
 
 	err = db.Ping()
 	if err != nil {
 		fmt.Println("db.Ping failure: ", err)
+		return -1
+	}
+	currentTime := time.Now()
+	fmt.Printf("Total power production at %s was: %d\n",
+		currentTime.Format("2006-01-02 3:4"), body.Body.Data.DayEnergy.Values.Num1)
+    query := fmt.Sprintf("INSERT INTO Production(Day,Power) values(curdate(), %d);",
+		body.Body.Data.DayEnergy.Values.Num1)
+
+	_, err = db.Query(query)
+
+	if err != nil {
+		fmt.Println("db.Query failure: ", err)
+		return -1
 	}
 	return 0
 }
@@ -138,23 +149,26 @@ func (d cumInvRTDataReqType) writeDB() int {
 
 //################################################################
 
-func main() {
+func storePower() {
 	var emptyBody cumInvRTDataReqResp
 	invRTDataReq := cumInvRTDataReqType{invRTData, [6]string{
 		"Scope", "System", "DeviceId", "1", "DataCollection", "CumulationInverterData1"},
 		emptyBody}
 
 	bodyString, resp := invRTDataReq.createHttpRequest()
+	defer resp.Body.Close()
 
 	invRTDataReq.body = invRTDataReq.parseData(bodyString)
-	fmt.Printf("%+v\n", invRTDataReq.body)
-	fmt.Println("Before writeDB...")
+	//fmt.Printf("%+v\n", invRTDataReq.body)
 
-	result := invRTDataReq.writeDB()
+	_ = invRTDataReq.writeDB(invRTDataReq.body)
+}
 
-	fmt.Println(result)
-
-	defer resp.Body.Close()
+func main() {
+	fmt.Println("Main: Starting solar power production store. Daily fetching time:", fetchTime)
+    s := gocron.NewScheduler()
+    s.Every(1).Day().At(fetchTime).Do(storePower)
+	<- s.Start()
 }
 
 // user: solar pw: solar ################################################################
