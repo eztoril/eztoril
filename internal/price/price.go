@@ -45,7 +45,8 @@ func parseMonthlySpot(input string) float64 {
 		found := re.FindAllString(dataStr, -1)
 		lastSpotStr := strings.TrimSpace(found[len(found)-1])
 		f, _ := strconv.ParseFloat(lastSpotStr, 32)
-		return f
+		//fmt.Printf("P: %f %f\n", f, f/100)
+		return (f / 100) // öre to kr
 	}
 	return -1
 }

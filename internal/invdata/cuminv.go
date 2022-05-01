@@ -25,7 +25,7 @@ type cumInvRTDataReqResp struct {
 			DayEnergy struct {
 				Unit   string `json:"Unit"`
 				Values struct {
-					Num1 int `json:"1"`
+					Num1 float64 `json:"1"`
 				} `json:"Values"`
 			} `json:"DAY_ENERGY"`
 			Pac struct {
@@ -62,7 +62,7 @@ type cumInvRTDataReqResp struct {
 	} `json:"Head"`
 }
 
-func FetchCumInvRTData(addr string) int {
+func FetchCumInvRTData(addr string) float64 {
 	invRTDataReq := cumInvRTDataReqType{"", [6]string{
 		"Scope", "System", "DeviceId", "1", "DataCollection", "CumulationInverterData1"}, "",
 	}
@@ -71,7 +71,8 @@ func FetchCumInvRTData(addr string) int {
 
 	body := invRTDataReq.parseData()
 	dailyPower := body.Body.Data.DayEnergy.Values.Num1
-	return dailyPower
+	//fmt.Printf("Pwr: %.0f\n", dailyPower)
+	return (dailyPower / 1000) // W to kW
 }
 
 func (d *cumInvRTDataReqType) parseData() cumInvRTDataReqResp {
