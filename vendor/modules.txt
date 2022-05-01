@@ -1,9 +1,4 @@
-# github.com/go-sql-driver/mysql v1.6.0
-## explicit
-github.com/go-sql-driver/mysql
-# github.com/jasonlvhit/gocron v0.0.1
-## explicit
-# golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
+# golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
 ## explicit
 golang.org/x/net/html
 golang.org/x/net/html/atom
