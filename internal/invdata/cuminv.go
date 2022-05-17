@@ -10,16 +10,16 @@ import (
 )
 
 const (
-	invRTDataUrl = "/solar_api/v1/GetInverterRealtimeData.cgi"
+	invRtDataUrl = "/solar_api/v1/GetInverterRealtimeData.cgi"
 )
 
-type cumInvRTDataReqType struct {
+type cumInvRtDataReq struct {
 	url        string
 	params     [6]string
 	bodyString string
 }
 
-type cumInvRTDataReqResp struct {
+type cumInvRtDataReqResp struct {
 	Body struct {
 		Data struct {
 			DayEnergy struct {
@@ -62,8 +62,8 @@ type cumInvRTDataReqResp struct {
 	} `json:"Head"`
 }
 
-func FetchCumInvRTData(addr string) float64 {
-	invRTDataReq := cumInvRTDataReqType{"", [6]string{
+func FetchCumInvRtData(addr string) float64 {
+	invRTDataReq := cumInvRtDataReq{"", [6]string{
 		"Scope", "System", "DeviceId", "1", "DataCollection", "CumulationInverterData1"}, "",
 	}
 	resp := invRTDataReq.createHttpRequest(addr)
@@ -75,14 +75,14 @@ func FetchCumInvRTData(addr string) float64 {
 	return (dailyPower / 1000) // W to kW
 }
 
-func (d *cumInvRTDataReqType) parseData() cumInvRTDataReqResp {
-	var body cumInvRTDataReqResp
+func (d *cumInvRtDataReq) parseData() cumInvRtDataReqResp {
+	var body cumInvRtDataReqResp
 	json.Unmarshal([]byte(d.bodyString), &body)
 	return body
 }
 
-func (d *cumInvRTDataReqType) createHttpRequest(invAddr string) *http.Response {
-	d.url = invAddr + invRTDataUrl
+func (d *cumInvRtDataReq) createHttpRequest(invAddr string) *http.Response {
+	d.url = invAddr + invRtDataUrl
 	d.params = [6]string{
 		"Scope", "System", "DeviceId", "1", "DataCollection", "CumulationInverterData1",
 	}
