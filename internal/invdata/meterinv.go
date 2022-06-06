@@ -270,24 +270,25 @@ type meterRtDataResp struct {
 	} `json:"Head"`
 }
 
-func FetchMeterRtData(addr string) float64 {
+func FetchMeterRtData(addr string) string {
 	meterReq := meterRtDataReq{"", [6]string{
 		"Scope", "System", "DeviceId", "1", "DataCollection", "CumulationInverterData1"}, "",
 	}
 	resp := meterReq.createHttpRequest(addr)
 	defer resp.Body.Close()
 
-	//	body := meterReq.parseData()
-	dailyPower := 1000.0
+	bodyString := meterReq.parseData()
+
+	//dailyPower := 1000.0
 	//fmt.Printf("Pwr: %.0f\n", dailyPower)
-	return (dailyPower / 1000) // W to kW
+	return bodyString
 }
 
-func (d *meterRtDataReq) parseData() meterRtDataResp {
+func (d *meterRtDataReq) parseData() string {
 	var body meterRtDataResp
 	json.Unmarshal([]byte(d.bodyString), &body)
-	fmt.Printf(d.bodyString)
-	return body
+	//fmt.Printf(d.bodyString)
+	return d.bodyString
 }
 
 func (d *meterRtDataReq) createHttpRequest(invAddr string) *http.Response {
@@ -317,7 +318,7 @@ func (d *meterRtDataReq) createHttpRequest(invAddr string) *http.Response {
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	d.bodyString = string(bodyBytes)
 
-	fmt.Printf(d.bodyString)
+	//fmt.Printf(d.bodyString)
 	fmt.Println("Fronius HTTP GET Response status:", resp.Status)
 	return resp
 }
