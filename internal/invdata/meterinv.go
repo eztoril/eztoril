@@ -1,12 +1,14 @@
 package invdata
 
 import (
+	"bufio"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -270,28 +272,51 @@ type meterRtDataResp struct {
 	} `json:"Head"`
 }
 
-func FetchMeterRtData(addr string) string {
+func FetchMeterRtData(addr string) (int64, int64) {
 	meterReq := meterRtDataReq{"", [6]string{
 		"Scope", "System", "DeviceId", "1", "DataCollection", "CumulationInverterData1"}, "",
 	}
-	resp := meterReq.createHttpRequest(addr)
+	resp := meterReq.httpGet(addr)
 	defer resp.Body.Close()
 
-	bodyString := meterReq.parseData()
-
-	//dailyPower := 1000.0
-	//fmt.Printf("Pwr: %.0f\n", dailyPower)
-	return bodyString
+	bodyString := meterReq.parseJsonData()
+	energyFromGrid, energyToGrid := parseMeterData(bodyString)
+	return energyFromGrid, energyToGrid
 }
 
-func (d *meterRtDataReq) parseData() string {
+func (d *meterRtDataReq) parseJsonData() string {
 	var body meterRtDataResp
 	json.Unmarshal([]byte(d.bodyString), &body)
 	//fmt.Printf(d.bodyString)
 	return d.bodyString
 }
 
-func (d *meterRtDataReq) createHttpRequest(invAddr string) *http.Response {
+func parseMeterData(bodyString string) (energyFromGrid int64, energyToGrid int64) {
+	scanner := bufio.NewScanner(strings.NewReader(bodyString))
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), "EnergyReal_WAC_Sum_Consumed") {
+			dataIx := strings.Index(scanner.Text(), " : ")
+			if dataIx != -1 {
+				data := scanner.Text()[dataIx+3:]
+				data = strings.TrimSuffix(data, ",")
+				energyFromGrid, _ = strconv.ParseInt(data, 10, 0)
+				//fmt.Printf("energyToGrid: %d\n", energyFromGrid)
+			}
+		}
+		if strings.Contains(scanner.Text(), "EnergyReal_WAC_Sum_Produced") {
+			dataIx := strings.Index(scanner.Text(), " : ")
+			if dataIx != -1 {
+				data := scanner.Text()[dataIx+3:]
+				data = strings.TrimSuffix(data, ",")
+				energyToGrid, _ = strconv.ParseInt(data, 10, 0)
+				//fmt.Printf("energyToGrid: %d\n", energyToGrid)
+			}
+		}
+	}
+	return energyFromGrid, energyToGrid
+}
+
+func (d *meterRtDataReq) httpGet(invAddr string) *http.Response {
 	d.url = invAddr + meterRtDataUrl
 	d.params = [6]string{
 		"Scope", "System", "DeviceId", "1", "DataCollection", "CumulationInverterData1",
@@ -319,6 +344,6 @@ func (d *meterRtDataReq) createHttpRequest(invAddr string) *http.Response {
 	d.bodyString = string(bodyBytes)
 
 	//fmt.Printf(d.bodyString)
-	fmt.Println("Fronius HTTP GET Response status:", resp.Status)
+	//fmt.Println("Fronius HTTP GET Response status:", resp.Status)
 	return resp
 }

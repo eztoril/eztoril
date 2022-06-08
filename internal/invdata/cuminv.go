@@ -62,26 +62,26 @@ type cumInvRtDataReqResp struct {
 	} `json:"Head"`
 }
 
-func FetchCumInvRtData(addr string) float64 {
+func FetchCumInvRtData(addr string) int64 {
 	invRTDataReq := cumInvRtDataReq{"", [6]string{
 		"Scope", "System", "DeviceId", "1", "DataCollection", "CumulationInverterData1"}, "",
 	}
-	resp := invRTDataReq.createHttpRequest(addr)
+	resp := invRTDataReq.httpGet(addr)
 	defer resp.Body.Close()
 
-	body := invRTDataReq.parseData()
-	dailyPower := body.Body.Data.DayEnergy.Values.Num1
+	body := invRTDataReq.parseJsonData()
+	dailyPower := int64(body.Body.Data.DayEnergy.Values.Num1)
 	//fmt.Printf("Pwr: %.0f\n", dailyPower)
-	return (dailyPower / 1000) // W to kW
+	return dailyPower
 }
 
-func (d *cumInvRtDataReq) parseData() cumInvRtDataReqResp {
+func (d *cumInvRtDataReq) parseJsonData() cumInvRtDataReqResp {
 	var body cumInvRtDataReqResp
 	json.Unmarshal([]byte(d.bodyString), &body)
 	return body
 }
 
-func (d *cumInvRtDataReq) createHttpRequest(invAddr string) *http.Response {
+func (d *cumInvRtDataReq) httpGet(invAddr string) *http.Response {
 	d.url = invAddr + invRtDataUrl
 	d.params = [6]string{
 		"Scope", "System", "DeviceId", "1", "DataCollection", "CumulationInverterData1",
